@@ -67,10 +67,8 @@ helm upgrade --install "$PROJECT_NAME" "$HELM_PATH"
 print_header "Waiting for app pod to be ready..."
 kubectl rollout status deployment/"$PROJECT_NAME" --timeout=120s
 
-print_header "Determining NodePort for your service..."
-sleep 5
-NODE_PORT=$(kubectl get svc "$PROJECT_NAME" -o=jsonpath='{.spec.ports[0].nodePort}')
-APP_URL="http://127.0.0.1:$NODE_PORT"
+print_header "Getting your app's reachable URL using minikube service"
+APP_URL=$(minikube service "$PROJECT_NAME" --url)
 echo
 echo "=================================================================="
 echo "🚀 Done! Your app should be accessible at: $APP_URL"
