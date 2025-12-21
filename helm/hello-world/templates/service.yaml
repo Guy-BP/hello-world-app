@@ -10,4 +10,4 @@ spec:
       protocol: TCP
       name: http
   selector:
-    app: {{ include "hello-world.name" . }}
+    app: hello-app
