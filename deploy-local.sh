@@ -77,11 +77,7 @@ minikube delete --profile=minikube &>/dev/null || true
 minikube start --driver=docker
 
 header "Helm deploy (NodePort, no ingress)"
-helm upgrade --install "$PROJECT_NAME" "$HELM_PATH" \
-  --set image.repository="$IMAGE_REPO" \
-  --set image.tag="$IMAGE_TAG" \
-  --set ingress.enabled=false \
-  --set service.type=NodePort
+helm upgrade --install "$PROJECT_NAME" "$HELM_PATH"
 
 header "Waiting for app to be ready..."
 kubectl rollout status deployment/"$PROJECT_NAME" --timeout=120s
@@ -91,10 +87,8 @@ cat <<EOF
 ==================================================================
 🚀 Done! Your app is deployed!
 
-To open your app in your browser, run:
-    minikube service $PROJECT_NAME
-
-(This method works on all Minikube drivers and will launch a working tunnel for you.)
+To open your app in your browser, run in a new terminal:
+    minikube service $PROJECT_NAME --url
 
 Press Enter to clean up and remove all local Kubernetes resources...
 EOF
