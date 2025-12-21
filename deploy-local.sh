@@ -10,25 +10,56 @@ AUTO_INSTALLED=()
 
 header() { echo -e "\n===[ $1 ]===\n"; }
 
+# Universal auto-installer by binary name
 auto_install() {
-  local bin="$1" url="$2"
-  if ! command -v $bin &>/dev/null; then
-    TMP_BIN="$(mktemp)"
-    echo "$bin not found. Auto-installing temporarily..."
-    curl -fsSL "$url" -o "$TMP_BIN"
-    chmod +x "$TMP_BIN"
-    sudo mv "$TMP_BIN" "/usr/local/bin/$bin"
-    AUTO_INSTALLED+=("$bin")
+  local bin="$1"
+  if command -v $bin &>/dev/null; then
+    return
   fi
+  echo "$bin not found. Auto-installing temporarily..."
+
+  case "$bin" in
+    kubectl)
+      LATEST=$(curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt)
+      curl -Lo kubectl "https://storage.googleapis.com/kubernetes-release/release/${LATEST}/bin/linux/amd64/kubectl"
+      chmod +x kubectl
+      sudo mv kubectl /usr/local/bin/kubectl
+      AUTO_INSTALLED+=("kubectl")
+      ;;
+    minikube)
+      curl -Lo minikube https://storage.googleapis.com/minikube/releases/latest/minikube-linux-amd64
+      chmod +x minikube
+      sudo mv minikube /usr/local/bin/minikube
+      AUTO_INSTALLED+=("minikube")
+      ;;
+    docker)
+      # Minimal install for Docker (using convenience script)
+      curl -fsSL https://get.docker.com -o get-docker.sh
+      sudo sh get-docker.sh
+      rm -f get-docker.sh
+      AUTO_INSTALLED+=("docker")
+      ;;
+    helm)
+      # Get latest Helm release tag via GitHub API, download, and extract only the binary
+      HELM_VERSION=$(curl -s https://api.github.com/repos/helm/helm/releases/latest | grep tag_name | cut -d '"' -f 4)
+      curl -LO "https://get.helm.sh/helm-${HELM_VERSION}-linux-amd64.tar.gz"
+      tar -xzf "helm-${HELM_VERSION}-linux-amd64.tar.gz"
+      sudo mv linux-amd64/helm /usr/local/bin/helm
+      rm -rf "helm-${HELM_VERSION}-linux-amd64.tar.gz" linux-amd64
+      AUTO_INSTALLED+=("helm")
+      ;;
+    *)
+      echo "Unknown binary: $bin"
+      exit 1
+      ;;
+  esac
 }
 
 header "Checking and auto-installing dependencies if needed (docker, minikube, helm, kubectl)"
-
-auto_install docker https://get.docker.com/
-auto_install minikube https://storage.googleapis.com/minikube/releases/latest/minikube-linux-amd64
-auto_install kubectl "$(curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt | \
-  xargs -I {} echo https://storage.googleapis.com/kubernetes-release/release/{}/bin/linux/amd64/kubectl)"
-auto_install helm https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3
+auto_install docker
+auto_install minikube
+auto_install kubectl
+auto_install helm
 
 header "Restarting Minikube (Docker driver)"
 minikube delete --profile=minikube &>/dev/null || true
@@ -45,9 +76,10 @@ cat <<EOF
 ==================================================================
 🚀 Done! Your app is deployed!
 
-To open your app in your browser, run in a new terminal:
+To open your app in your browser, run:
     minikube service $PROJECT_NAME
 
+(This method works on all Minikube drivers and will launch a working tunnel for you.)
 
 Press Enter to clean up and remove all local Kubernetes resources...
 EOF
@@ -57,10 +89,17 @@ header "Cleanup"
 helm uninstall "$PROJECT_NAME" &>/dev/null || true
 minikube delete
 
-if ((${#AUTO_INSTALLED[@]})); then
-  header "Removing auto-installed binaries"
+if [ ${#AUTO_INSTALLED[@]} -gt 0 ]; then
+  header "Removing auto-installed dependencies"
   for bin in "${AUTO_INSTALLED[@]}"; do
-    sudo rm -f "/usr/local/bin/$bin" && echo "Removed: $bin"
+    # Try to remove, but don't break if sudo is missing (usually for docker)
+    sudo rm -f "/usr/local/bin/$bin" 2>/dev/null || true
+    echo "Removed: $bin"
+    # For Docker, attempt to uninstall if installed by script (optional, intrusive)
+    if [[ "$bin" == "docker" ]]; then
+      # Try to uninstall if using apt (ignore failure)
+      sudo apt-get remove -y docker-ce docker-ce-cli containerd.io 2>/dev/null || true
+    fi
   done
 fi
 
