@@ -5,7 +5,6 @@ PROJECT_NAME="hello-app"
 HELM_PATH="helm/hello-world"
 IMAGE_REPO="guy66bp/hello-world-app"
 IMAGE_TAG="latest"
-APP_SECRET="local-secret"
 
 ### Utility: Install a dependency if missing ###
 install_if_missing() {
@@ -62,21 +61,27 @@ fi
 minikube start --driver=docker
 
 print_header "Deploying with Helm (NodePort service, no ingress)"
-helm upgrade --install "$PROJECT_NAME" "$HELM_PATH"
+helm upgrade --install "$PROJECT_NAME" "$HELM_PATH" \
+  --set image.repository="$IMAGE_REPO" \
+  --set image.tag="$IMAGE_TAG" \
+  --set ingress.enabled=false \
+  --set service.type=NodePort
 
 print_header "Waiting for app pod to be ready..."
 kubectl rollout status deployment/"$PROJECT_NAME" --timeout=120s
 
-print_header "Determining Minikube Node IP and NodePort for browser access..."
-MINIKUBE_IP=$(minikube ip)
-NODE_PORT=$(kubectl get svc "$PROJECT_NAME" -o=jsonpath='{.spec.ports[0].nodePort}')
-APP_URL="http://${MINIKUBE_IP}:${NODE_PORT}"
+print_header "Accessing your app in browser (Minikube Docker driver workaround)"
 echo
 echo "=================================================================="
-echo "🚀 Done! Your app should be accessible at: $APP_URL"
-echo "(Minikube Docker driver: use this address, not 127.0.0.1)"
-echo "Open your browser and check!"
+echo "🚀 Done! Your app is deployed!"
 echo
+echo "To open your app in the browser, run this command in your terminal:"
+echo
+echo "    minikube service $PROJECT_NAME"
+echo
+echo "This will reliably start a tunnel and open the browser for you."
+echo "If you use Ctrl+C in that tunnel, simply re-run the above command."
+echo 
 echo "Press Enter to clean up and remove all local Kubernetes resources..."
 read
 
