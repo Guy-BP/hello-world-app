@@ -6,88 +6,62 @@ HELM_PATH="helm/hello-world"
 IMAGE_REPO="guy66bp/hello-world-app"
 IMAGE_TAG="latest"
 
-### Utility: Install a dependency if missing ###
-install_if_missing() {
-    local bin="$1"
-    local brew_pkg="$2"
-    local apt_pkg="$3"
-    local install_url="$4"
+AUTO_INSTALLED=()
 
-    if ! command -v $bin &>/dev/null; then
-        echo "$bin not found. Installing..."
-        if [[ "$OSTYPE" == "darwin"* ]]; then
-            if command -v brew &>/dev/null; then
-                brew install "$brew_pkg"
-            else
-                echo "Please install Homebrew to proceed."
-                exit 1
-            fi
-        elif [[ "$OSTYPE" == "linux-gnu"* ]]; then
-            if command -v apt &>/dev/null; then
-                sudo apt-get update
-                sudo apt-get install -y "$apt_pkg"
-            else
-                echo "No apt found. Trying direct download."
-                curl -Lo "$bin-tmp" "$install_url"
-                chmod +x "$bin-tmp"
-                sudo mv "$bin-tmp" /usr/local/bin/"$bin"
-            fi
-        else
-            echo "Unsupported OS. Please install $bin manually."
-            exit 1
-        fi
-    else
-        echo "$bin found."
-    fi
+header() { echo -e "\n===[ $1 ]===\n"; }
+
+auto_install() {
+  local bin="$1" url="$2"
+  if ! command -v $bin &>/dev/null; then
+    TMP_BIN="$(mktemp)"
+    echo "$bin not found. Auto-installing temporarily..."
+    curl -fsSL "$url" -o "$TMP_BIN"
+    chmod +x "$TMP_BIN"
+    sudo mv "$TMP_BIN" "/usr/local/bin/$bin"
+    AUTO_INSTALLED+=("$bin")
+  fi
 }
 
-print_header() {
-  echo
-  echo "===[ $1 ]==="
-}
+header "Checking and auto-installing dependencies if needed (docker, minikube, helm, kubectl)"
 
-print_header "Checking and installing dependencies (docker, minikube, helm, kubectl)"
-install_if_missing docker docker.io docker.io https://get.docker.com/
-install_if_missing minikube minikube minikube https://storage.googleapis.com/minikube/releases/latest/minikube-linux-amd64
-install_if_missing kubectl kubectl kubectl "$(curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt | \
+auto_install docker https://get.docker.com/
+auto_install minikube https://storage.googleapis.com/minikube/releases/latest/minikube-linux-amd64
+auto_install kubectl "$(curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt | \
   xargs -I {} echo https://storage.googleapis.com/kubernetes-release/release/{}/bin/linux/amd64/kubectl)"
-install_if_missing helm helm helm https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3
+auto_install helm https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3
 
-print_header "Starting (or restarting) minikube with Docker driver"
-if minikube status &>/dev/null; then
-    minikube stop
-    minikube delete
-fi
+header "Restarting Minikube (Docker driver)"
+minikube delete --profile=minikube &>/dev/null || true
 minikube start --driver=docker
 
-print_header "Deploying with Helm (NodePort service, no ingress)"
-helm upgrade --install "$PROJECT_NAME" "$HELM_PATH" \
-  --set image.repository="$IMAGE_REPO" \
-  --set image.tag="$IMAGE_TAG" \
-  --set ingress.enabled=false \
-  --set service.type=NodePort
+header "Helm deploy (NodePort, no ingress)"
+helm upgrade --install "$PROJECT_NAME" "$HELM_PATH"
 
-print_header "Waiting for app pod to be ready..."
+header "Waiting for app to be ready..."
 kubectl rollout status deployment/"$PROJECT_NAME" --timeout=120s
 
-print_header "Accessing your app in browser (Minikube Docker driver workaround)"
-echo
-echo "=================================================================="
-echo "🚀 Done! Your app is deployed!"
-echo
-echo "To open your app in the browser, run this command in your terminal:"
-echo
-echo "    minikube service $PROJECT_NAME"
-echo
-echo "This will reliably start a tunnel and open the browser for you."
-echo "If you use Ctrl+C in that tunnel, simply re-run the above command."
-echo 
-echo "Press Enter to clean up and remove all local Kubernetes resources..."
+header "Access your app"
+cat <<EOF
+==================================================================
+🚀 Done! Your app is deployed!
+
+To open your app in your browser, run in a new terminal:
+    minikube service $PROJECT_NAME
+
+
+Press Enter to clean up and remove all local Kubernetes resources...
+EOF
 read
 
-print_header "Cleaning up: Uninstalling Helm release and deleting Minikube cluster"
-helm uninstall "$PROJECT_NAME" 2>/dev/null || true
-minikube stop
+header "Cleanup"
+helm uninstall "$PROJECT_NAME" &>/dev/null || true
 minikube delete
+
+if ((${#AUTO_INSTALLED[@]})); then
+  header "Removing auto-installed binaries"
+  for bin in "${AUTO_INSTALLED[@]}"; do
+    sudo rm -f "/usr/local/bin/$bin" && echo "Removed: $bin"
+  done
+fi
 
 echo "Clean up complete!"
