@@ -36,7 +36,8 @@ auto_install() {
       AUTO_INSTALLED+=("kubectl")
       ;;
     minikube)
-      curl -Lo minikube https://storage.googleapis.com/minikube/releases/latest/minikube-linux-amd64
+      MINIKUBE_VERSION=$(curl -s https://api.github.com/repos/kubernetes/minikube/releases/latest | grep tag_name | cut -d '"' -f 4)
+      curl -Lo minikube "https://storage.googleapis.com/minikube/releases/${MINIKUBE_VERSION}/minikube-linux-amd64"
       chmod +x minikube
       sudo mv minikube /usr/local/bin/minikube
       sleep 2
@@ -76,19 +77,20 @@ header "Restarting Minikube (Docker driver)"
 minikube delete --profile=minikube &>/dev/null || true
 minikube start --driver=docker
 
-header "Helm deploy (NodePort, no ingress)"
+header "Helm deploy"
 helm upgrade --install "$PROJECT_NAME" "$HELM_PATH"
 
 header "Waiting for app to be ready..."
 kubectl rollout status deployment/"$PROJECT_NAME" --timeout=120s
 
 header "Access your app"
+APP_URL=$(minikube service "$PROJECT_NAME" --url)
 cat <<EOF
 ==================================================================
 🚀 Done! Your app is deployed!
 
-To open your app in your browser, run in a new terminal:
-    minikube service $PROJECT_NAME --url
+Open your app in your browser at:
+    $APP_URL
 
 Press Enter to clean up and remove all local Kubernetes resources...
 EOF
@@ -103,7 +105,6 @@ if [ ${#AUTO_INSTALLED[@]} -gt 0 ]; then
   for bin in "${AUTO_INSTALLED[@]}"; do
     sudo rm -f "/usr/local/bin/$bin" 2>/dev/null || true
     echo "Removed: $bin"
-    # Optionally try to remove docker via apt if it was installed via the script
     if [[ "$bin" == "docker" ]]; then
       sudo apt-get remove -y docker-ce docker-ce-cli containerd.io 2>/dev/null || true
     fi
