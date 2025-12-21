@@ -71,11 +71,12 @@ helm upgrade --install "$PROJECT_NAME" "$HELM_PATH" \
 print_header "Waiting for app pod to be ready..."
 kubectl rollout status deployment/"$PROJECT_NAME" --timeout=120s
 
-print_header "Getting your app's localhost URL..."
-URL=$(minikube service "$PROJECT_NAME" --url)
+print_header "Determining NodePort for your service..."
+NODE_PORT=$(kubectl get svc "$PROJECT_NAME" -o=jsonpath='{.spec.ports[0].nodePort}')
+APP_URL="http://127.0.0.1:$NODE_PORT"
 echo
 echo "=================================================================="
-echo "🚀 Done! Your app should be accessible at: $URL"
+echo "🚀 Done! Your app should be accessible at: $APP_URL"
 echo "Open your browser and check!"
 echo
 echo "Press Enter to clean up and remove all local Kubernetes resources..."
