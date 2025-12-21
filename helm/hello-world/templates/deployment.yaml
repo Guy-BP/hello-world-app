@@ -19,10 +19,7 @@ spec:
             - containerPort: {{ .Values.service.port }}
           env:
             - name: APP_SECRET
-              valueFrom:
-                secretKeyRef:
-                  name: {{ .Release.Name }}-secret
-                  key: app-secret
+              value: "test"  # hardcode as non-secret for local/demo purposes
           readinessProbe:
             httpGet:
               path: /
