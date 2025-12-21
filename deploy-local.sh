@@ -75,11 +75,6 @@ kubectl rollout status deployment/"$PROJECT_NAME" --timeout=120s
 print_header "Determining NodePort for your service..."
 sleep 5
 NODE_PORT=$(kubectl get svc "$PROJECT_NAME" -o=jsonpath='{.spec.ports[0].nodePort}')
-if [[ -z "$NODE_PORT" ]]; then
-  echo "Failed to determine NodePort! Is your service type set to NodePort in the Helm chart?"
-  kubectl get svc "$PROJECT_NAME" -o yaml
-  exit 1
-fi
 APP_URL="http://127.0.0.1:$NODE_PORT"
 echo
 echo "=================================================================="
