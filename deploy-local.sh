@@ -3,7 +3,7 @@ set -e
 
 PROJECT_NAME="hello-app"
 HELM_PATH="helm/hello-world"
-IMAGE_REPO="Guy-BP/hello-world-app"
+IMAGE_REPO="guy66bp/hello-world-app"
 IMAGE_TAG="latest"
 APP_SECRET="local-secret"
 
