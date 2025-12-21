@@ -62,12 +62,7 @@ fi
 minikube start --driver=docker
 
 print_header "Deploying with Helm (NodePort service, no ingress)"
-helm upgrade --install "$PROJECT_NAME" "$HELM_PATH" \
-  --set image.repository="$IMAGE_REPO" \
-  --set image.tag="$IMAGE_TAG" \
-  --set secrets.app_secret="$APP_SECRET" \
-  --set ingress.enabled=false \
-  --set service.type=NodePort
+helm upgrade --install "$PROJECT_NAME" "$HELM_PATH"
 
 print_header "Waiting for app pod to be ready..."
 kubectl rollout status deployment/"$PROJECT_NAME" --timeout=120s
