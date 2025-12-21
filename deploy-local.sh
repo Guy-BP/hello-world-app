@@ -18,7 +18,7 @@ install_if_missing() {
         echo "$bin not found. Installing..."
         if [[ "$OSTYPE" == "darwin"* ]]; then
             if command -v brew &>/dev/null; then
-                brew install $brew_pkg
+                brew install "$brew_pkg"
             else
                 echo "Please install Homebrew to proceed."
                 exit 1
@@ -26,12 +26,12 @@ install_if_missing() {
         elif [[ "$OSTYPE" == "linux-gnu"* ]]; then
             if command -v apt &>/dev/null; then
                 sudo apt-get update
-                sudo apt-get install -y $apt_pkg
+                sudo apt-get install -y "$apt_pkg"
             else
                 echo "No apt found. Trying direct download."
-                curl -Lo "$bin" "$install_url"
-                chmod +x "$bin"
-                sudo mv "$bin" /usr/local/bin/
+                curl -Lo "$bin-tmp" "$install_url"
+                chmod +x "$bin-tmp"
+                sudo mv "$bin-tmp" /usr/local/bin/"$bin"
             fi
         else
             echo "Unsupported OS. Please install $bin manually."
@@ -47,14 +47,13 @@ print_header() {
   echo "===[ $1 ]==="
 }
 
-# ==== Install needed packages ====
 print_header "Checking and installing dependencies (docker, minikube, helm, kubectl)"
 install_if_missing docker docker.io docker.io https://get.docker.com/
 install_if_missing minikube minikube minikube https://storage.googleapis.com/minikube/releases/latest/minikube-linux-amd64
-install_if_missing kubectl kubectl kubectl https://storage.googleapis.com/kubernetes-release/release/`curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt`/bin/linux/amd64/kubectl
+install_if_missing kubectl kubectl kubectl "$(curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt | \
+  xargs -I {} echo https://storage.googleapis.com/kubernetes-release/release/{}/bin/linux/amd64/kubectl)"
 install_if_missing helm helm helm https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3
 
-# ==== Start minikube fresh for a clean environment ====
 print_header "Starting (or restarting) minikube with Docker driver"
 if minikube status &>/dev/null; then
     minikube stop
@@ -62,30 +61,34 @@ if minikube status &>/dev/null; then
 fi
 minikube start --driver=docker
 
-print_header "Building local hello-world-app environment (Helm + DockerHub image)"
-# No local build/push needed -- image is already on DockerHub from CI
-
 print_header "Deploying with Helm (NodePort service, no ingress)"
 helm upgrade --install "$PROJECT_NAME" "$HELM_PATH" \
   --set image.repository="$IMAGE_REPO" \
   --set image.tag="$IMAGE_TAG" \
   --set secrets.app_secret="$APP_SECRET" \
-  --set ingress.enabled=false
+  --set ingress.enabled=false \
+  --set service.type=NodePort
 
 print_header "Waiting for app pod to be ready..."
 kubectl rollout status deployment/"$PROJECT_NAME" --timeout=120s
 
-print_header "Opening app via minikube service"
-URL=$(minikube service "$PROJECT_NAME" --url)
+print_header "Determining NodePort for your service..."
+sleep 5
+NODE_PORT=$(kubectl get svc "$PROJECT_NAME" -o=jsonpath='{.spec.ports[0].nodePort}')
+if [[ -z "$NODE_PORT" ]]; then
+  echo "Failed to determine NodePort! Is your service type set to NodePort in the Helm chart?"
+  kubectl get svc "$PROJECT_NAME" -o yaml
+  exit 1
+fi
+APP_URL="http://127.0.0.1:$NODE_PORT"
 echo
 echo "=================================================================="
-echo "🚀 Done! Your app should be accessible at: $URL"
+echo "🚀 Done! Your app should be accessible at: $APP_URL"
 echo "Open your browser and check!"
 echo
 echo "Press Enter to clean up and remove all local Kubernetes resources..."
 read
 
-# Cleanup
 print_header "Cleaning up: Uninstalling Helm release and deleting Minikube cluster"
 helm uninstall "$PROJECT_NAME" 2>/dev/null || true
 minikube stop
