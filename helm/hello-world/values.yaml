@@ -1,0 +1,18 @@
+replicaCount: 1
+
+image:
+  repository: docker.io/yourdockeruser/hello-world-app
+  tag: "latest"
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  port: 5000
+
+ingress:
+  enabled: true
+  host: demo.yourdomain.com
+  path: /
+
+secrets:
+  app_secret: "changeme"
