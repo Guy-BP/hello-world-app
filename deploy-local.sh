@@ -56,17 +56,15 @@ kubectl rollout status deployment/"$PROJECT_NAME" --timeout=120s
 
 header "Access your app"
 
-# This gets the local-accessible URL for your app service
 URL=$(minikube service "$PROJECT_NAME" --url | head -n1)
+if [[ -z "$URL" ]]; then
+  echo -e "\n😿  ERROR: No service URL detected. Check if '$PROJECT_NAME' is running and of type NodePort."
+  minikube service "$PROJECT_NAME"
+else
+  echo -e "\n=================================================================="
+  echo "Your app is live at: $URL"
+  echo "Visit this URL in your browser!"
+fi
 
-echo -e "\n=================================================================="
-echo "Your app is live at: $URL"
-echo "Visit this URL in your browser!"
 echo "Press Enter for cleanup."
 read
-
-header "Cleanup"
-helm uninstall "$PROJECT_NAME" &>/dev/null || true
-minikube delete
-
-echo "Done!"
