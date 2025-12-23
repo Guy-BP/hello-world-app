@@ -77,20 +77,42 @@ header "Restarting Minikube (Docker driver)"
 minikube delete --profile=minikube &>/dev/null || true
 minikube start --driver=docker
 
+# Enable Minikube ingress for Ingress resources
+header "Enabling Minikube Ingress Addon"
+minikube addons enable ingress
+
 header "Helm deploy"
 helm upgrade --install "$PROJECT_NAME" "$HELM_PATH"
 
 header "Waiting for app to be ready..."
 kubectl rollout status deployment/"$PROJECT_NAME" --timeout=120s
 
+# Setup Ingress host mapping for localhost testing
+HOST_NAME="hello.local"
+MINIKUBE_IP=$(minikube ip)
+if ! grep -q "$HOST_NAME" /etc/hosts; then
+  echo "$MINIKUBE_IP $HOST_NAME" | sudo tee -a /etc/hosts >/dev/null
+  echo "$HOST_NAME added to /etc/hosts"
+else
+  echo "$HOST_NAME already present in /etc/hosts"
+fi
+
 header "Access your app"
 APP_URL=$(minikube service "$PROJECT_NAME" --url)
+INGRESS_URL="http://$HOST_NAME"
+
 cat <<EOF
 ==================================================================
 🚀 Done! Your app is deployed!
 
 Open your app in your browser at:
-    $APP_URL
+    (Ingress)   $INGRESS_URL
+    (NodePort)  $APP_URL
+
+Note:
+ - Ingress requires 'hello.local' to resolve to your Minikube IP (${MINIKUBE_IP}).
+ - This script adds it to /etc/hosts for you.
+ - To access via NodePort, the old URL works as before.
 
 Press Enter to clean up and remove all local Kubernetes resources...
 EOF
@@ -110,5 +132,9 @@ if [ ${#AUTO_INSTALLED[@]} -gt 0 ]; then
     fi
   done
 fi
+
+header "Restoring /etc/hosts"
+sudo sed -i "/[[:space:]]hello.local$/d" /etc/hosts
+echo "Removed hello.local entry from /etc/hosts"
 
 echo "Clean up complete!"
