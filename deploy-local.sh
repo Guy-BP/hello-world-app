@@ -34,16 +34,17 @@ kubectl rollout status deployment/ingress-nginx-controller -n ingress-nginx --ti
 header "Helm deploy"
 helm upgrade --install "$PROJECT_NAME" "$CHART_PATH"
 
-header "Waiting for app"
+header "Waiting for app deployment"
 kubectl rollout status deployment/"$PROJECT_NAME" --timeout=120s
 
-# Set up /etc/hosts for Ingress
-HOST=hello.local
-IP=$(minikube ip)
-grep -q "$HOST" /etc/hosts || echo "$IP $HOST" | sudo tee -a /etc/hosts >/dev/null
+header "Access your app"
+
+# This gets the local-accessible URL for service/$PROJECT_NAME
+URL=$(minikube service "$PROJECT_NAME" --url | head -n1)
 
 echo -e "\n=================================================================="
-echo "Your app is live at: http://$HOST"
+echo "Your app is live at: $URL"
+echo "Visit this URL in your browser!"
 echo "Press Enter for cleanup."
 read
 
@@ -51,5 +52,4 @@ header "Cleanup"
 helm uninstall "$PROJECT_NAME" &>/dev/null || true
 minikube delete
 
-sudo sed -i "/[[:space:]]$HOST$/d" /etc/hosts && echo "Removed $HOST from /etc/hosts"
 echo "Done!"
