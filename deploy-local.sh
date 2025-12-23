@@ -31,6 +31,23 @@ minikube addons enable ingress
 header "Waiting for Ingress NGINX controller pod to be ready ..."
 kubectl rollout status deployment/ingress-nginx-controller -n ingress-nginx --timeout=180s
 
+header "Waiting for Ingress admission webhook to be ready ..."
+for i in {1..30}; do
+  ENDPOINTS=$(kubectl get endpoints ingress-nginx-controller-admission -n ingress-nginx \
+    -o jsonpath='{.subsets[*].addresses[*].ip}' 2>/dev/null)
+  if [[ -n "$ENDPOINTS" ]]; then
+    echo "Ingress admission webhook endpoint is ready: $ENDPOINTS"
+    break
+  else
+    echo "Waiting for ingress-nginx-controller-admission endpoint... ($i/30)"
+    sleep 2
+  fi
+  if [[ $i -eq 30 ]]; then
+    echo "ERROR: Timed out waiting for ingress-nginx-controller-admission endpoint."
+    exit 1
+  fi
+done
+
 header "Helm deploy"
 helm upgrade --install "$PROJECT_NAME" "$CHART_PATH"
 
@@ -39,7 +56,7 @@ kubectl rollout status deployment/"$PROJECT_NAME" --timeout=120s
 
 header "Access your app"
 
-# This gets the local-accessible URL for service/$PROJECT_NAME
+# This gets the local-accessible URL for your app service
 URL=$(minikube service "$PROJECT_NAME" --url | head -n1)
 
 echo -e "\n=================================================================="
