@@ -11,12 +11,6 @@ for dep in "${REQUIRED[@]}"; do
   fi
 done
 
-if minikube start --help 2>&1 | grep -q -- '--driver'; then
-  DRIVER_FLAG="--driver=docker"
-else
-  DRIVER_FLAG="--vm-driver=docker"
-fi
-
 PROJECT_NAME="hello-app"
 CHART_PATH="helm/hello-world"
 
@@ -28,7 +22,7 @@ header "Helm deploy"
 helm upgrade --install "$PROJECT_NAME" "$CHART_PATH"
 
 header "Waiting for app deployment"
-kubectl rollout status deployment/"$PROJECT_NAME" --timeout=120s
+kubectl rollout status deployment/"$PROJECT_NAME" --timeout=30s
 
 header "Access your app"
 echo
