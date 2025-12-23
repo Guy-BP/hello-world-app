@@ -98,7 +98,6 @@ else
 fi
 
 header "Access your app"
-APP_URL=$(minikube service "$PROJECT_NAME" --url)
 INGRESS_URL="http://$HOST_NAME"
 
 cat <<EOF
@@ -107,12 +106,10 @@ cat <<EOF
 
 Open your app in your browser at:
     (Ingress)   $INGRESS_URL
-    (NodePort)  $APP_URL
 
 Note:
  - Ingress requires 'hello.local' to resolve to your Minikube IP (${MINIKUBE_IP}).
  - This script adds it to /etc/hosts for you.
- - To access via NodePort, the old URL works as before.
 
 Press Enter to clean up and remove all local Kubernetes resources...
 EOF
