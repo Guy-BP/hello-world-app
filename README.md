@@ -2,7 +2,7 @@
 
 ## 🚀 How to Run This Project
 
-### Local Deployment (with Minikube & Ingress)
+### Local Deployment (with Minikube & NodePort)
 
 ```bash
 git clone https://github.com/Guy-BP/hello-world-app.git
@@ -10,12 +10,14 @@ cd hello-world-app
 chmod +x deploy-local.sh
 ./deploy-local.sh
 ```
-- The script will **automatically install any missing dependencies** (`docker`, `kubectl`, `helm`, `minikube`).
-- Your app is built, deployed to Minikube via Helm and exposed via **Kubernetes Ingress**.
-- You will see a local URL in the terminal:  
-  - **Open http://hello.local** in your browser to access the app!
-  - The script adds/removes the necessary `/etc/hosts` entry and handles all the setup/teardown.
-- When done, cleanup is automatic, including removal of CLI tools installed by the script.
+- The script will **check for required dependencies** (`docker`, `kubectl`, `helm`, `minikube`) and prompt if missing.
+- Your app is built, deployed to Minikube via Helm, and exposed via a **Kubernetes NodePort Service**.
+- To access your app, **open a new terminal** and run:
+  ```bash
+  minikube service hello-app --url
+  ```
+  - Copy and open the outputted URL in your browser to see the app!
+- When finished, return to the script and **press Enter** for automatic clean-up of the app and Minikube resources.
 
 ---
 
@@ -39,24 +41,21 @@ chmod +x deploy-local.sh
 ### 2. Local Deploy Script (`deploy-local.sh`)
 - **Purpose:** One-command portable local Kubernetes demo (Minikube).
 - **What it does:**  
-  - Checks/installs missing dependencies (removed in cleanup).
+  - Checks for required dependencies.
   - Starts or resets a Minikube cluster (using the Docker driver).
-  - Enables the Minikube NGINX Ingress controller.
-  - Installs the app’s Helm chart, which creates a Deployment, Service, and Ingress.
-  - Adds a `hello.local` entry to `/etc/hosts` mapped to your Minikube IP for browser access.
-  - Prints the Ingress URL (`http://hello.local`) for you to use.
-  - Cleans up all deployed resources, `/etc/hosts`, and any auto-installed tools on exit.
+  - Installs the app’s Helm chart, which creates a Deployment and NodePort Service.
+  - Prints instructions to get a browser URL using `minikube service hello-app --url`.
+  - Cleans up all deployed resources when you press Enter.
 
 ### 3. Helm Chart (`helm/hello-world/`)
 - **Purpose:** Kubernetes application/lifecycle configuration and deployment.
 - **Key files:**  
     - `Chart.yaml` — Helm chart definition.
-    - `values.yaml` — Default settings: image, replica count, service type, ingress, etc.
+    - `values.yaml` — Default settings: image, replica count, service type (NodePort), etc.
     - `templates/deployment.yaml` — Defines the app’s Deployment.
-    - `templates/service.yaml` — Exposes the app.
-    - `templates/ingress.yaml` — Exposes the app via Ingress at `hello.local`.
+    - `templates/service.yaml` — Exposes the app via NodePort Service.
 - **What it does:**  
-  - Parameterizes the Docker image, port, replica count, and ingress host.
+  - Parameterizes the Docker image, port, replica count, and service type.
 
 ---
 
@@ -64,7 +63,7 @@ chmod +x deploy-local.sh
 
 - **CI/CD:** Manually run workflow builds and pushes Docker image to registry.
 - **Local Demo:**  
-    - `deploy-local.sh` provides zero-config, full-cycle Minikube + Ingress app demo.
+    - `deploy-local.sh` provides zero-config, full-cycle Minikube app demo via NodePort service.
 - **Helm Chart:** customizable Kubernetes deployment—ready for local or cloud clusters.
 
 ---
