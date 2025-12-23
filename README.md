@@ -39,7 +39,7 @@ chmod +x deploy-local.sh
 ### 2. Local Deploy Script (`deploy-local.sh`)
 - **Purpose:** One-command portable local Kubernetes demo (Minikube).
 - **What it does:**  
-  - Checks/installs missing dependencies (removed after cleanup).
+  - Checks/installs missing dependencies (removed in cleanup).
   - Starts or resets a Minikube cluster (using the Docker driver).
   - Enables the Minikube NGINX Ingress controller.
   - Installs the app’s Helm chart, which creates a Deployment, Service, and Ingress.
@@ -53,11 +53,10 @@ chmod +x deploy-local.sh
     - `Chart.yaml` — Helm chart definition.
     - `values.yaml` — Default settings: image, replica count, service type, ingress, etc.
     - `templates/deployment.yaml` — Defines the app’s Deployment.
-    - `templates/service.yaml` — Exposes the app (default: ClusterIP, configurable).
+    - `templates/service.yaml` — Exposes the app.
     - `templates/ingress.yaml` — Exposes the app via Ingress at `hello.local`.
 - **What it does:**  
   - Parameterizes the Docker image, port, replica count, and ingress host.
-  - Supports both local and production-like cloud deployment with configurable settings.
 
 ---
 
@@ -66,6 +65,6 @@ chmod +x deploy-local.sh
 - **CI/CD:** Manually run workflow builds and pushes Docker image to registry.
 - **Local Demo:**  
     - `deploy-local.sh` provides zero-config, full-cycle Minikube + Ingress app demo.
-- **Helm Chart:** Flexible, customizable K8s deployment—ready for local (Minikube) or cloud clusters.
+- **Helm Chart:** customizable Kubernetes deployment—ready for local or cloud clusters.
 
 ---
