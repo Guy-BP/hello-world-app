@@ -33,25 +33,14 @@ kubectl rollout status deployment/"$PROJECT_NAME" --timeout=120s
 header "Access your app"
 echo
 echo "=================================================================="
-echo "Your app will be accessible at a localhost URL while the proxy is open."
-echo "Launching proxy... (ctrl+C or Enter to stop and clean up)"
+echo "To access your app in a browser, open a new terminal and run:"
 echo
-
-minikube service "$PROJECT_NAME" --url &
-
-PROXY_PID=$!
-
-# Give the proxy a moment to start and output the URL
-sleep 2
-SERVICE_URL=$(minikube service "$PROJECT_NAME" --url | head -n1)
-echo "👉 Open this URL in your browser: $SERVICE_URL"
+echo "    minikube service $PROJECT_NAME --url"
 echo
-
-echo "Press Enter to clean up and remove all local Kubernetes resources..."
+echo "Use the outputted URL to open your service in a browser."
+echo "When finished, return here and press Enter to clean up."
+echo
 read
-
-# Kill the background proxy
-kill $PROXY_PID || true
 
 header "Cleanup"
 helm uninstall "$PROJECT_NAME" &>/dev/null || true
