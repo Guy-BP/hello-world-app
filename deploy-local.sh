@@ -1,16 +1,15 @@
 #!/usr/bin/env bash
 set -e
 
-REQUIRED=("docker" "minikube" "kubectl" "helm")
+header() { echo -e "\n===[ $1 ]===\n"; }
 
+REQUIRED=("docker" "minikube" "kubectl" "helm")
 for dep in "${REQUIRED[@]}"; do
   if ! command -v "$dep" &>/dev/null; then
     echo "ERROR: Please install '$dep' and ensure it is in your PATH before running this script."
     exit 1
   fi
 done
-
-header() { echo -e "\n===[ $1 ]===\n"; }
 
 # Detect correct Minikube driver flag for compatibility
 if minikube start --help 2>&1 | grep -q -- '--driver'; then
@@ -29,6 +28,9 @@ minikube start $DRIVER_FLAG
 header "Enabling Ingress"
 minikube addons enable ingress
 
+header "Waiting for Ingress NGINX controller pod to be ready ..."
+kubectl rollout status deployment/ingress-nginx-controller -n ingress-nginx --timeout=180s
+
 header "Helm deploy"
 helm upgrade --install "$PROJECT_NAME" "$CHART_PATH"
 
@@ -42,7 +44,7 @@ grep -q "$HOST" /etc/hosts || echo "$IP $HOST" | sudo tee -a /etc/hosts >/dev/nu
 
 echo -e "\n=================================================================="
 echo "Your app is live at: http://$HOST"
-echo "Press Enter to remove cleanup."
+echo "Press Enter for cleanup."
 read
 
 header "Cleanup"
