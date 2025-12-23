@@ -55,16 +55,16 @@ header "Waiting for app deployment"
 kubectl rollout status deployment/"$PROJECT_NAME" --timeout=120s
 
 header "Access your app"
-APP_URL=$(minikube service "$PROJECT_NAME" --url)
-cat <<EOF
-==================================================================
-🚀 Done! Your app is deployed!
-
-Open your app in your browser at:
-    $APP_URL
-
-Press Enter to clean up and remove all local Kubernetes resources...
-EOF
+MINIKUBE_IP=$(minikube ip)
+NODE_PORT=$(kubectl get svc "$PROJECT_NAME" -o=jsonpath='{.spec.ports[0].nodePort}')
+APP_URL="http://${MINIKUBE_IP}:${NODE_PORT}"
+echo
+echo "=================================================================="
+echo "🚀 Done! Your app should be accessible at: $APP_URL"
+echo "(Minikube Docker driver: use this address, not 127.0.0.1)"
+echo "Open your browser and check!"
+echo
+echo "Press Enter to clean up and remove all local Kubernetes resources..."
 read
 
 header "Cleanup"
